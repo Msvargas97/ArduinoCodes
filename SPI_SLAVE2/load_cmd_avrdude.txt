@@ -1,0 +1,1 @@
+avrdude -v -patmega328p -cstk500v1 -PCOM17 -b19200 -Uflash:w:SPI_SLAVE2.ino.with_bootloader.standard.hex:i
