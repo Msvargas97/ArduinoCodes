@@ -4,10 +4,8 @@ String inputString = "";         // a string to hold incoming data
 boolean stringComplete = false;  // whether the string is complete
 Servo myESC;
 
-int pos = 0;
+
 void setup() {
-  pinMode(A1, INPUT_PULLUP);
-  inputString.reserve(200);
   myESC.attach(11);
   myESC.write(0);
   delay(1000);
@@ -15,9 +13,12 @@ void setup() {
 }
 
 void loop() {
-  static int count;
+
+  myESC.write(0);
+  delay(2000);
   myESC.write(80);
-  delay(200);
+  delay(2000);
+
   //  if (!digitalRead(A1)) {
   //    count++;
   //    delay(200);
@@ -47,18 +48,18 @@ void loop() {
      stringComplete = false;
     }*/
 }
-void serialEvent() {
-  while (Serial.available()) {
-    // get the new byte:
-    char inChar = (char)Serial.read();
-    // add it to the inputString:
-    inputString += inChar;
-    // if the incoming character is a newline, set a flag
-    // so the main loop can do something about it:
-    if (inChar == '\n') {
-      stringComplete = true;
-    }
-  }
-}
+//void serialEvent() {
+//  while (Serial.available()) {
+//    // get the new byte:
+//    char inChar = (char)Serial.read();
+//    // add it to the inputString:
+//    inputString += inChar;
+//    // if the incoming character is a newline, set a flag
+//    // so the main loop can do something about it:
+//    if (inChar == '\n') {
+//      stringComplete = true;
+//    }
+//  }
+//}
 
 

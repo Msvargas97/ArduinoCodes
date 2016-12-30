@@ -1,89 +1,100 @@
-// This line specifies what pin we will use for sending the
-// signal to the servo.  You can change this.
+/*
+ * Codigo optimizado para el uso de Turbinas EDF27 o control de 1 solo motor BLCD
+ * Mediante el uso del ESC (Electronic Speed Controller)
+ * Este codigo funciona solamente con la Baby Orangutan
+ * 
+ * By Michael Vargas
+ * 30/12/2016
+ * Los Pin 9 y 10 quedan
+ * Deshabilitados SOLO para el uso del PWM 
+ * se puede usar como I/O sin problema
+ * 
+ * Creditos:
+ * https://www.pololu.com/docs/0J57/8.a
+ */
 #define F_CPU 20000000UL
-#define SERVO_PIN 11
 
-// This is the time since the last rising edge in units of 0.5us.
-uint16_t volatile servoTime = 0;
+#define ESC_PIN 7 //Pin digital donde esta conectado el ESC 
+#define ESC_SPEED   2000
 
-// This is the pulse width we want in units of 0.5us.
-uint16_t volatile servoHighTime = 3750;
+#define ESC_Stop()   ESCSetPosition(1500)      //Envia señal de 1.5 ms para detener el motor
+#define ESC_Start()  ESCSetPosition(ESC_SPEED) //Envia señal de xx ms para girar el motor
 
-// This is true if the servo pin is currently high.
-boolean volatile servoHigh = false;
+//########## Variables Timer1 - ESC ############
+uint16_t volatile ESCTime = 0;
+uint16_t volatile ESC_HighTime = 3750; //No cambiar
+boolean volatile ESCHigh = false;
+//##############################################
 
 void setup()
 {
-  servoInit();
-  servoSetPosition(1000);
-  delay(150);
-  servoSetPosition(1000);
+  ESCInit();
+  delay(2000);
 }
-
 void loop()
 {
-  servoSetPosition(1500);
+  ESC_Start();
   delay(2000);
-  servoSetPosition(2000);  // Send 2000us pulses.
+  ESC_Stop();
   delay(2000);
 }
 
-// This ISR runs after Timer 2 reaches OCR2A and resets.
-// In this ISR, we set OCR2A in order to schedule when the next
+// This ISR runs after Timer 1 reaches OCR1A and resets.
+// In this ISR, we set OCR1A in order to schedule when the next
 // interrupt will happen.
-// Generally we will set OCR2A to 255 so that we have an
-// interrupt every 128 us, but the first two interrupt intervals
+// Generally we will set OCR1A to 255 so that we have an
+// interrupt every 102.4 us, but the first two interrupt intervals
 // after the rising edge will be smaller so we can achieve
 // the desired pulse width.
 ISR(TIMER1_COMPA_vect)
 {
-  // The time that passed since the last interrupt is OCR2A + 1
-  // because the timer value will equal OCR2A before going to 0.
-  servoTime += OCR1A + 1;
+  // The time that passed since the last interrupt is OCR1A + 1
+  // because the timer value will equal OCR1A before going to 0.
+  ESCTime += OCR1A + 1;
 
   static uint16_t highTimeCopy = 3750;
   static uint8_t interruptCount = 0;
 
-  if (servoHigh)
+  if (ESCHigh)
   {
     if (++interruptCount == 2)
     {
       OCR1A = 255;
     }
 
-    // The servo pin is currently high.
+    // The ESC pin is currently high.
     // Check to see if is time for a falling edge.
     // Note: We could == instead of >=.
-    if (servoTime >= highTimeCopy)
+    if (ESCTime >= highTimeCopy)
     {
       // The pin has been high enough, so do a falling edge.
-      digitalWrite(SERVO_PIN, LOW);
-      servoHigh = false;
+      digitalWrite(ESC_PIN, LOW);
+      ESCHigh = false;
       interruptCount = 0;
     }
   }
   else
   {
-    // The servo pin is currently low.
+    // The ESC pin is currently low.
 
-    if (servoTime >= 50000)
+    if (ESCTime >= 50000)
     {
       // We've hit the end of the period (20 ms),
       // so do a rising edge.
-      highTimeCopy = servoHighTime;
-      digitalWrite(SERVO_PIN, HIGH);
-      servoHigh = true;
-      servoTime = 0;
+      highTimeCopy = ESC_HighTime;
+      digitalWrite(ESC_PIN, HIGH);
+      ESCHigh = true;
+      ESCTime = 0;
       interruptCount = 0;
       OCR1A = ((highTimeCopy % 256) + 256) / 2 - 1;
     }
   }
 }
 
-void servoInit()
+void ESCInit()
 {
-  digitalWrite(SERVO_PIN, LOW);
-  pinMode(SERVO_PIN, OUTPUT);
+  digitalWrite(ESC_PIN, LOW);
+  pinMode(ESC_PIN, OUTPUT);
 
   // Turn on CTC mode.  Timer 2 will count up to OCR2A, then
   // reset to 0 and cause an interrupt.
@@ -97,11 +108,15 @@ void servoInit()
 
   TIMSK1 |= (1 << OCIE1A);  // Enable timer compare interrupt.
   sei();   // Enable interrupts.
+  
+  ESCSetPosition(1000);
+  delay(150);
+  ESCSetPosition(1000);
 }
 
-void servoSetPosition(uint16_t highTimeMicroseconds)
+void ESCSetPosition(uint16_t highTimeMicroseconds)
 {
   TIMSK1 &= ~(1 << OCIE1A); // disable timer compare interrupt
-  servoHighTime = highTimeMicroseconds * 2.5;
+  ESC_HighTime = highTimeMicroseconds * 2.5;
   TIMSK1 |= (1 << OCIE1A); // enable timer compare interrupt
 }
